@@ -148,6 +148,10 @@ class MyOptionParser(OptionParser):
             dest = self.parse_dest(args[1])
             for (k, v) in dest.__dict__.items():
                 setattr(options, k, v)
+        if ((options.google_takeout_box_as_base_folder) and (not (options.google_takeout))):
+            self.error("--google-takeout-box-as-base-folder needs --google-takeout option")
+        if ((options.google_takeout_first_label) and (not (options.google_takeout))):
+            self.error("--google-takeout-first-label needs --google-takeout option")
         if options.port is None:
             options.port = [143, 993][options.ssl]
         if not options.list_boxes:
