@@ -571,7 +571,6 @@ class IMAPUploader:
             google_takeout_box_imap_command = '"' + google_takeout_box + '"'
             if google_takeout_box != "INBOX":
                 try:
-                    # self.imap.enable("UTF8=ACCEPT")
                     self.imap.create(imap_utf7.encode(google_takeout_box_imap_command))
                 except:
                     print ("Cannot create box %s" % google_takeout_box)
