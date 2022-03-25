@@ -229,13 +229,14 @@ def decode_header_to_string(header):
 class Progress():
     """Store and output progress information."""
 
-    def __init__(self, total_count, google_takeout = False):
+    def __init__(self, total_count, google_takeout = False, google_takeout_first_label = False):
         self.total_count = total_count
         self.ok_count = 0
         self.count = 0
         self.format = "%" + str(len(str(total_count))) + "d/" + \
                       str(total_count) + " %5.1f %-2s  %s  "
         self.google_takeout = google_takeout
+        self.google_takeout_first_label = google_takeout_first_label
 
     def begin(self, msg):
         """Called when start proccessing of a new message."""
@@ -335,6 +336,10 @@ class Progress():
                             msg.boxes.append(box.split("/"))
             if len(msg.boxes) == 0:
                 msg.boxes.append(["INBOX"])
+            if self.google_takeout_first_label:
+                first_label = msg.boxes[0]
+                msg.boxes = []
+                msg.boxes.append(first_label)
 
         print(self.format % \
               (self.count + 1, size, prefix + "B", left_fit_width(sbj, 30)), end=' ')
@@ -356,10 +361,10 @@ class Progress():
               (self.ok_count, self.total_count - self.ok_count))
 
 
-def upload(imap, box, src, err, time_fields, google_takeout = False, debug = False):
+def upload(imap, box, src, err, time_fields, google_takeout = False, google_takeout_first_label = False, debug = False):
     print("Uploading to {}...".format(box))
     print("Counting the mailbox (it could take a while for the large one).")
-    p = Progress(len(src), google_takeout=google_takeout)
+    p = Progress(len(src), google_takeout=google_takeout, google_takeout_first_label=google_takeout_first_label)
     for i, msg in src.items():
         try:
             p.begin(msg)
@@ -645,7 +650,7 @@ def main(args=None):
                 src = mailbox.mbox(src, create=False)
                 if err:
                     err = mailbox.mbox(err)
-                upload(uploader, options["box"], src, err, time_fields, google_takeout, debug)
+                upload(uploader, options["box"], src, err, time_fields, google_takeout, google_takeout_first_label, debug)
             else:
                 recursive_upload(uploader, "", src, err, time_fields, email_only_folders, separator)
 
