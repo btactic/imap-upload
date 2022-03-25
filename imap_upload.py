@@ -34,6 +34,7 @@ class MyOptionParser(OptionParser):
                 "  MBOX_FOLDER folder containing subfolder trees of mbox files\n"\
                 "  DEST is imap[s]://[USER[:PASSWORD]@]HOST[:PORT][/BOX]\n"\
                 "  DEST has a priority over the options."
+        self.google_takeout_supported_languages = [ "en", "es", "ca" ]
         OptionParser.__init__(self, usage,
                               version="IMAP Upload " + __version__)
         self.add_option("-r", action="store_true",
@@ -92,6 +93,8 @@ class MyOptionParser(OptionParser):
                         help="Use given box as base folder.")
         self.add_option("--google-takeout-first-label", action="store_true",
                         help="Only import first label from the email.")
+        self.add_option("--google-takeout-language",
+                        help="[Use specific language. Supported languages: '%s'. " % (" ".join(self.google_takeout_supported_languages)) + "default: %default]" )
         self.add_option("--debug", action="store_true",
                         help="Debug: Make some error messages more verbose.")
         self.set_defaults(host="localhost",
@@ -108,6 +111,7 @@ class MyOptionParser(OptionParser):
                           google_takeout=False,
                           google_takeout_box_as_base_folder=False,
                           google_takeout_first_label=False,
+                          google_takeout_language="en",
                           debug=False
                           )
 
@@ -152,6 +156,10 @@ class MyOptionParser(OptionParser):
             self.error("--google-takeout-box-as-base-folder needs --google-takeout option")
         if ((options.google_takeout_first_label) and (not (options.google_takeout))):
             self.error("--google-takeout-first-label needs --google-takeout option")
+        if ((options.google_takeout_language) and (not (options.google_takeout))):
+            self.error("--google-takeout-language needs --google-takeout option")
+        if (not (options.google_takeout_language in self.google_takeout_supported_languages)):
+            self.error("--google-takeout-language: '%s' is not a supported language. Supported languages: '%s'." % (options.google_takeout_language, " ".join(self.google_takeout_supported_languages)))
         if options.port is None:
             options.port = [143, 993][options.ssl]
         if not options.list_boxes:
@@ -233,7 +241,7 @@ def decode_header_to_string(header):
 class Progress():
     """Store and output progress information."""
 
-    def __init__(self, total_count, google_takeout = False, google_takeout_first_label = False):
+    def __init__(self, total_count, google_takeout = False, google_takeout_first_label = False, google_takeout_language = "en"):
         self.total_count = total_count
         self.ok_count = 0
         self.count = 0
@@ -241,15 +249,25 @@ class Progress():
                       str(total_count) + " %5.1f %-2s  %s  "
         self.google_takeout = google_takeout
         self.google_takeout_first_label = google_takeout_first_label
+        self.google_takeout_language = google_takeout_language
 
     def begin(self, msg):
         """Called when start proccessing of a new message."""
         self.time_began = time.time()
         size, prefix = si_prefix(float(len(msg.as_string())), threshold=0.8)
         sbj = decode_header_to_string(msg["subject"] or "")
-        google_takeout_language = "es"
         if self.google_takeout:
-            if (google_takeout_language == "es"):
+            if (self.google_takeout_language == "en"):
+                gmail_inbox_str = r"Inbox"
+                gmail_sent_str = r"Sent"
+                gmail_draft_str = "Draft"
+                gmail_important_str = u'Important'
+                gmail_open_str = u'Open'
+                gmail_unseen_str = u"Unread"
+                gmail_category_str = r"^Category_"
+                gmail_imap_str = r'^IMAP_'
+                gmail_trash_str = "Trash"
+            elif (self.google_takeout_language == "es"):
                 gmail_inbox_str = r"Recibidos"
                 gmail_sent_str = r"Enviados"
                 gmail_draft_str = "Borradores"
@@ -259,7 +277,7 @@ class Progress():
                 gmail_category_str = r"^Categor.a:"
                 gmail_imap_str = r'^IMAP_'
                 gmail_trash_str = "Papelera"
-            else:
+            elif (self.google_takeout_language == "ca"):
                 gmail_inbox_str = r"Safata d'entrada"
                 gmail_sent_str = r"Enviats"
                 gmail_draft_str = "Esborranys"
@@ -365,10 +383,10 @@ class Progress():
               (self.ok_count, self.total_count - self.ok_count))
 
 
-def upload(imap, box, src, err, time_fields, google_takeout = False, google_takeout_first_label = False, google_takeout_box_as_base_folder = False, debug = False):
+def upload(imap, box, src, err, time_fields, google_takeout = False, google_takeout_first_label = False, google_takeout_box_as_base_folder = False, google_takeout_language = "en", debug = False):
     print("Uploading to {}...".format(box))
     print("Counting the mailbox (it could take a while for the large one).")
-    p = Progress(len(src), google_takeout=google_takeout, google_takeout_first_label=google_takeout_first_label)
+    p = Progress(len(src), google_takeout=google_takeout, google_takeout_first_label=google_takeout_first_label, google_takeout_language=google_takeout_language)
     for i, msg in src.items():
         try:
             p.begin(msg)
@@ -641,6 +659,7 @@ def main(args=None):
         google_takeout = options.pop("google_takeout")
         google_takeout_box_as_base_folder = options.pop("google_takeout_box_as_base_folder")
         google_takeout_first_label = options.pop("google_takeout_first_label")
+        google_takeout_language = options.pop("google_takeout_language")
         debug = options.pop("debug")
 
 
@@ -664,7 +683,7 @@ def main(args=None):
                 src = mailbox.mbox(src, create=False)
                 if err:
                     err = mailbox.mbox(err)
-                upload(uploader, options["box"], src, err, time_fields, google_takeout, google_takeout_first_label, google_takeout_box_as_base_folder, debug)
+                upload(uploader, options["box"], src, err, time_fields, google_takeout, google_takeout_first_label, google_takeout_box_as_base_folder, google_takeout_language, debug)
             else:
                 recursive_upload(uploader, "", src, err, time_fields, email_only_folders, separator)
 
