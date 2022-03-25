@@ -361,7 +361,7 @@ class Progress():
               (self.ok_count, self.total_count - self.ok_count))
 
 
-def upload(imap, box, src, err, time_fields, google_takeout = False, google_takeout_first_label = False, debug = False):
+def upload(imap, box, src, err, time_fields, google_takeout = False, google_takeout_first_label = False, google_takeout_box_as_base_folder = False, debug = False):
     print("Uploading to {}...".format(box))
     print("Counting the mailbox (it could take a while for the large one).")
     p = Progress(len(src), google_takeout=google_takeout, google_takeout_first_label=google_takeout_first_label)
@@ -369,9 +369,18 @@ def upload(imap, box, src, err, time_fields, google_takeout = False, google_take
         try:
             p.begin(msg)
             if google_takeout:
-                for i in range(len(msg.boxes)):
+                if google_takeout_box_as_base_folder:
+                    msg_boxes = []
+                    for i in range(len(msg.boxes)):
+                        msg_box = []
+                        msg_box.append(box)
+                        msg_box.extend(msg.boxes[i])
+                        msg_boxes.append(msg_box)
+                else:
+                    msg_boxes = msg.boxes
+                for i in range(len(msg_boxes)):
                     r, r2 = imap.upload(box, msg.get_delivery_time(time_fields),
-                                        msg.as_string(), msg.flags, msg.boxes[i], 3)
+                                        msg.as_string(), msg.flags, msg_boxes[i], 3)
                     if r != "OK":
                         raise Exception(r2[0]) # FIXME: Should use custom class
             else:
@@ -650,7 +659,7 @@ def main(args=None):
                 src = mailbox.mbox(src, create=False)
                 if err:
                     err = mailbox.mbox(err)
-                upload(uploader, options["box"], src, err, time_fields, google_takeout, google_takeout_first_label, debug)
+                upload(uploader, options["box"], src, err, time_fields, google_takeout, google_takeout_first_label, google_takeout_box_as_base_folder, debug)
             else:
                 recursive_upload(uploader, "", src, err, time_fields, email_only_folders, separator)
 
