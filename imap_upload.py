@@ -209,36 +209,6 @@ def si_prefix(n, prefixes=("", "k", "M", "G", "T", "P", "E", "Z", "Y"),
         return (n, prefixes[0])
     return si_prefix(n / block, prefixes[1:])
 
-
-def str_width(s):
-    """Get string width."""
-    w = 0
-    for c in str(s):
-        w += 1 + (unicodedata.east_asian_width(c) in "FWA")
-    return w
-
-
-def trim_width(s, width):
-    """Get truncated string with specified width."""
-    trimed = []
-    for c in str(s):
-        width -= str_width(c)
-        if width <= 0:
-            break
-        trimed.append(c)
-    return "".join(trimed)
-
-
-def left_fit_width(s, width, fill=' '):
-    """Make a string fixed width by padding or truncating.
-
-    Note: fill can't be full width character.
-    """
-    s = trim_width(s, width)
-    s += fill * (width - str_width(s))
-    return s
-
-
 def decode_header_to_string(header):
     """Decodes an email message header (possibly RFC2047-encoded)
     into a string, while working around https://bugs.python.org/issue22833"""
@@ -394,7 +364,7 @@ class Progress():
                 msg.boxes.append(only_label)
 
         print(self.format % \
-              (self.count + 1, size, prefix + "B", left_fit_width(sbj, 30)),
+              (self.count + 1, size, prefix + "B", '{:30.30}'.format(sbj)),
               "to [%s]" % (",".join(x[0] for x in msg.boxes)), end=' ')
 
     def get_label_by_prio(self, labels):
