@@ -242,6 +242,17 @@ def decode_header_to_string(header):
         _decode(bytestr, encoding)
         for bytestr, encoding in email.header.decode_header(header))
 
+all_chars = (chr(i) for i in range(sys.maxunicode))
+categories = {'Cc', 'Cf', 'Cs', 'Co', 'Cn'}
+control_chars = ''.join(c for c in all_chars if unicodedata.category(c) in categories)
+# or equivalently and much more efficiently
+#control_chars = ''.join(map(chr, itertools.chain(range(0x00,0x20), range(0x7f,0xa0))))
+
+control_char_re = re.compile('[%s]' % re.escape(control_chars))
+
+def remove_control_chars(s):
+    return control_char_re.sub('', s)
+
 
 class Progress():
     """Store and output progress information."""
@@ -388,7 +399,7 @@ class Progress():
                 msg.boxes.append(only_label)
 
         print(self.format % \
-              (self.count + 1, size, prefix + "B", '{:30.30}'.format(sbj)),
+              (self.count + 1, size, prefix + "B", '{:30.30}'.format(remove_control_chars(sbj))),
               "to [%s]" % (",".join(x[0] for x in msg.boxes)), end=' ')
 
     def get_label_by_prio(self, labels):
